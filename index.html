@@ -8,6 +8,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Three.js GLTFLoader CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <!-- Compiled 3D Model base64 Data -->
+  <script src="assets/robot_data.js"></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,12 +41,21 @@
     /* Hide scrollbar for clean UI, yet retain scrolling functionality */
     ::-webkit-scrollbar { display: none; }
     html { scrollbar-width: none; }
+
+    /* Custom Backlighting for Model Separation */
+    body {
+      background: 
+        radial-gradient(circle at 25% 45%, rgba(0, 255, 204, 0.08) 0%, transparent 60%),
+        radial-gradient(circle at 75% 55%, rgba(255, 85, 51, 0.08) 0%, transparent 60%),
+        #050507;
+      color: #e4e4e7;
+    }
   </style>
 </head>
 <body class="font-sans antialiased overflow-x-hidden selection:bg-brand-neon selection:text-black">
 
   <!-- Fixed 3D Canvas Background Container -->
-  <div class="fixed inset-0 w-full h-full z-0 overflow-hidden bg-[#050507]">
+  <div class="fixed inset-0 w-full h-full z-0 overflow-hidden">
     <!-- Background overlay gradients -->
     <div class="absolute inset-0 z-10 bg-gradient-to-b from-brand-dark/95 via-transparent to-brand-dark/95 mix-blend-multiply pointer-events-none"></div>
     <div class="absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,transparent_30%,#050507_98%)] pointer-events-none"></div>
@@ -265,7 +278,7 @@
     let targetLightX = 0;
     let targetLightY = 0;
 
-    let targetScale = 1.2;
+    let targetScale = 1.1;
 
     // Scroll listener
     window.addEventListener('scroll', () => {
@@ -281,10 +294,10 @@
     // Proximity to center scale logic
     function adjustRobotScale() {
       const isMobile = window.innerWidth < 768;
-      const baseScale = isMobile ? 0.8 : 1.25;
+      const baseScale = isMobile ? 0.82 : 1.25;
       
       // Scale down slightly as user scrolls down
-      const scrollFactor = 1.0 - targetScrollFraction * 0.2;
+      const scrollFactor = 1.0 - targetScrollFraction * 0.15;
       
       // Mouse proximity: closer to center increases scale slightly
       const distFromCenter = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
@@ -299,8 +312,8 @@
       mouseX = (e.clientX / window.innerWidth) * 2 - 1;
       mouseY = (e.clientY / window.innerHeight) * 2 - 1;
       
-      targetMouseRotationY = mouseX * 0.4;
-      targetMouseRotationX = mouseY * 0.4;
+      targetMouseRotationY = mouseX * 0.45;
+      targetMouseRotationX = mouseY * 0.45;
 
       adjustRobotScale();
 
@@ -336,153 +349,164 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // --- PROCEDURAL 3D ROBOT CONSTRUCTION ---
-    const robotGroup = new THREE.Group();
-    scene.add(robotGroup);
+    // --- LOAD DYNAMIC MODEL FROM BASE64 STRING ---
+    const robotGroup1 = new THREE.Group();
+    const robotGroup2 = new THREE.Group();
+    scene.add(robotGroup1);
+    scene.add(robotGroup2);
 
-    // Materials
-    const metalMaterial = new THREE.MeshStandardMaterial({
-      color: 0x14161d,      // Solid metallic gunmetal chest plate
-      metalness: 0.95,
-      roughness: 0.1
-    });
+    let robotModel1 = null;
+    let robotModel2 = null;
+    const disassemblyMeshes1 = [];
+    const disassemblyMeshes2 = [];
+    const loader = new THREE.GLTFLoader();
 
-    const wireframeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00ffcc,      // Glowing cyan wireframes
-      wireframe: true,
-      metalness: 0.9,
-      roughness: 0.05
-    });
+    // Helper to calculate outward vector directions for exploded view
+    function setupDisassemblyData(model, array) {
+      model.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
 
-    const darkWireframeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x242838,      // Dark iron structural grid wireframe
-      wireframe: true,
-      metalness: 0.95,
-      roughness: 0.1
-    });
+          if (node.material) {
+            node.material.metalness = 0.65; // Lower metalness so it is less reflective of dark surroundings
+            node.material.roughness = 0.25; // Higher roughness scatters more light
+            node.material.emissive = new THREE.Color(0x383838); // Subtle emissive glow to lift dark textures
+          }
 
-    const visorGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffcc       // Cybernetic cyan visor glow
-    });
+          // Compute bounding box center of mesh geometry
+          node.geometry.computeBoundingBox();
+          const localCenter = new THREE.Vector3();
+          if (node.geometry.boundingBox) {
+            node.geometry.boundingBox.getCenter(localCenter);
+          }
 
-    const jointMaterial = new THREE.MeshStandardMaterial({
-      color: 0xff5533,      // Industrial Orange joints
-      wireframe: true,
-      metalness: 0.8,
-      roughness: 0.2
-    });
+          // Get world center of this mesh geometry
+          const worldCenter = localCenter.clone();
+          node.localToWorld(worldCenter);
 
-    // 1. Torso Base
-    const chestGeom = new THREE.BoxGeometry(2.4, 1.8, 1.6);
-    const chestMesh = new THREE.Mesh(chestGeom, darkWireframeMaterial);
-    robotGroup.add(chestMesh);
+          // Vector pointing from scene origin (0,0,0) (since model is centered) to mesh world center
+          const worldDir = new THREE.Vector3().copy(worldCenter).normalize();
 
-    const waistGeom = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 8);
-    const waistMesh = new THREE.Mesh(waistGeom, jointMaterial);
-    waistMesh.position.y = -1.5;
-    robotGroup.add(waistMesh);
+          // Fallback if it is at the center
+          if (worldDir.lengthSq() === 0) {
+            worldDir.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+          }
 
-    const hipsGeom = new THREE.BoxGeometry(2.0, 0.6, 1.4);
-    const hipsMesh = new THREE.Mesh(hipsGeom, darkWireframeMaterial);
-    hipsMesh.position.y = -2.2;
-    robotGroup.add(hipsMesh);
+          // Transform world direction to parent's local coordinate system (where position lives)
+          let localDir = worldDir.clone();
+          if (node.parent) {
+            const parentMatrixInv = node.parent.matrixWorld.clone().invert();
+            localDir.transformDirection(parentMatrixInv);
+          }
 
-    // 2. Chest Plate (slides forward on scroll disassembly)
-    const chestPlateGeom = new THREE.BoxGeometry(2.6, 1.4, 0.3);
-    const chestPlate = new THREE.Mesh(chestPlateGeom, metalMaterial);
-    const chestPlateBaseZ = 0.85;
-    chestPlate.position.set(0, 0.1, chestPlateBaseZ);
-    robotGroup.add(chestPlate);
+          // Store details
+          node.userData.originalPosition = node.position.clone();
+          node.userData.disassemblyDir = localDir;
+          array.push(node);
+        }
+      });
+    }
 
-    // 3. Head Assembly (slides up on scroll disassembly)
-    const headGroup = new THREE.Group();
-    const headBaseY = 1.9;
-    headGroup.position.set(0, headBaseY, 0);
+    // Decode Base64 data safely in memory (no network CORS blocked request over file://)
+    try {
+      console.log("Decoding base64 model data...");
+      const base64Data = robotBase64.split(',')[1];
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      console.log("Model binary decoded. ArrayBuffer size:", bytes.buffer.byteLength);
 
-    const neckGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.6, 8);
-    const neckMesh = new THREE.Mesh(neckGeom, darkWireframeMaterial);
-    neckMesh.position.y = -0.6;
-    headGroup.add(neckMesh);
+      loader.parse(
+        bytes.buffer,
+        '',
+        function (gltf) {
+          // --- ROBOT 1 SETUP ---
+          robotModel1 = gltf.scene;
 
-    const headGeom = new THREE.BoxGeometry(1.3, 1.1, 1.1);
-    const headMesh = new THREE.Mesh(headGeom, wireframeMaterial);
-    headGroup.add(headMesh);
+          // Standardize model sizing and centering
+          const box = new THREE.Box3().setFromObject(robotModel1);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
 
-    const visorGeom = new THREE.BoxGeometry(1.0, 0.16, 0.1);
-    const visorMesh = new THREE.Mesh(visorGeom, visorGlowMaterial);
-    visorMesh.position.set(0, 0.15, 0.56);
-    headGroup.add(visorMesh);
+          // Center the model inside its parent group origin
+          robotModel1.position.x += (robotModel1.position.x - center.x);
+          robotModel1.position.y += (robotModel1.position.y - center.y);
+          robotModel1.position.z += (robotModel1.position.z - center.z);
 
-    robotGroup.add(headGroup);
+          // Scale model to standard target height of 13.0 units
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const targetHeight = 13.0;
+          const scale = targetHeight / maxDim;
+          robotModel1.scale.set(scale, scale, scale);
 
-    // 4. Arms (slide outward on scroll disassembly)
-    const leftArmGroup = new THREE.Group();
-    const leftArmBaseX = -1.6;
-    leftArmGroup.position.set(leftArmBaseX, 0.6, 0);
+          // Configure disassembly data
+          setupDisassemblyData(robotModel1, disassemblyMeshes1);
+          robotGroup1.add(robotModel1);
 
-    const leftShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), jointMaterial);
-    leftArmGroup.add(leftShoulder);
+          // --- ROBOT 2 SETUP (CLONED) ---
+          robotModel2 = robotModel1.clone();
+          // Materials need to be cloned so they are independent
+          robotModel2.traverse((node) => {
+            if (node.isMesh && node.material) {
+              node.material = node.material.clone();
+            }
+          });
+          
+          setupDisassemblyData(robotModel2, disassemblyMeshes2);
+          robotGroup2.add(robotModel2);
 
-    const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.8, 8), darkWireframeMaterial);
-    leftUpperArm.position.y = -0.9;
-    leftUpperArm.rotation.z = 0.1;
-    leftArmGroup.add(leftUpperArm);
+          console.log("Both GLB Models loaded and parsed successfully!");
+          
+          // Initial refit scale
+          adjustRobotScale();
+        },
+        function (error) {
+          console.error("Error parsing GLB data in Three.js:", error);
+        }
+      );
+    } catch (e) {
+      console.error("Failed to decode base64 model data:", e);
+    }
 
-    const leftElbow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), jointMaterial);
-    leftElbow.position.y = -1.8;
-    leftArmGroup.add(leftElbow);
+    // Set starting offsets for aesthetic alignment (shifted down to prevent navbar overlap)
+    robotGroup1.position.set(-1.5, -2.5, 0);
+    robotGroup1.rotation.y = -0.3;
 
-    const leftLowerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.6, 8), wireframeMaterial);
-    leftLowerArm.position.y = -2.6;
-    leftArmGroup.add(leftLowerArm);
+    robotGroup2.position.set(12.0, -2.5, 0); // Start off-screen
+    robotGroup2.rotation.y = -0.3;
 
-    robotGroup.add(leftArmGroup);
-
-    const rightArmGroup = new THREE.Group();
-    const rightArmBaseX = 1.6;
-    rightArmGroup.position.set(rightArmBaseX, 0.6, 0);
-
-    const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), jointMaterial);
-    rightArmGroup.add(rightShoulder);
-
-    const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.8, 8), darkWireframeMaterial);
-    rightUpperArm.position.y = -0.9;
-    rightUpperArm.rotation.z = -0.1;
-    rightArmGroup.add(rightUpperArm);
-
-    const rightElbow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), jointMaterial);
-    rightElbow.position.y = -1.8;
-    rightArmGroup.add(rightElbow);
-
-    const rightLowerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.6, 8), wireframeMaterial);
-    rightLowerArm.position.y = -2.6;
-    rightArmGroup.add(rightLowerArm);
-
-    robotGroup.add(rightArmGroup);
-
-    // Initial position shift for better visual layout placement
-    robotGroup.position.set(-1.5, 0, 0);
-    // Let's adjust starting orientation
-    robotGroup.rotation.y = -0.3;
-
-    // --- LIGHTS ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+    // --- BRIGHTENED LIGHTS ---
+    // High Ambient Light (bright fill)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.25);
     scene.add(ambientLight);
 
-    // Cyan Neon dynamic PointLight
-    const neonLight1 = new THREE.PointLight(0x00ffcc, 5, 45);
+    // Hemisphere Light (sky/ground wrapping ambient fill)
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x333333, 2.2);
+    scene.add(hemiLight);
+
+    // Cyan PointLight (follows mouse, brightened)
+    const neonLight1 = new THREE.PointLight(0x00ffcc, 22, 50);
     neonLight1.position.set(5, 5, 10);
     scene.add(neonLight1);
 
-    // Orange Neon mirror PointLight
-    const neonLight2 = new THREE.PointLight(0xff5533, 4, 30);
+    // Orange PointLight (counter-tracks mouse, brightened)
+    const neonLight2 = new THREE.PointLight(0xff5533, 16, 40);
     neonLight2.position.set(-5, -5, -5);
     scene.add(neonLight2);
 
-    // Accent directional light
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    // Dynamic Directional Light (brightened)
+    const dirLight = new THREE.DirectionalLight(0xffffff, 5.0);
     dirLight.position.set(10, 20, 15);
     scene.add(dirLight);
+
+    // Dynamic Fill Directional Light (brighten shadows)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 3.5);
+    fillLight.position.set(-15, 10, -10);
+    scene.add(fillLight);
 
     // --- RESPONSIVE RESIZE HANDLING ---
     window.addEventListener('resize', () => {
@@ -508,12 +532,11 @@
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Kinetic speed decay
+      // Decay kinetic speed
       mouseSpeed *= 0.95;
       
-      // Speed up idle animations during rapid mouse drags
+      // Accelerate idle rotation speed during quick mouse movement
       idleTime += delta * (1.0 + mouseSpeed * 5.0);
-
       // Lerp Scroll interactive rotation offsets
       currentScrollRotY += (targetScrollFraction * 3.5 - currentScrollRotY) * 0.08;
       currentScrollRotX += (targetScrollFraction * 0.5 - currentScrollRotX) * 0.08;
@@ -522,34 +545,68 @@
       currentMouseRotY += (targetMouseRotationY - currentMouseRotY) * 0.06;
       currentMouseRotX += (targetMouseRotationX - currentMouseRotX) * 0.06;
 
-      // Combine Rotations (Base slow turn + scroll turn + mouse tilt)
-      robotGroup.rotation.y = -0.3 + idleTime * 0.05 + currentScrollRotY + currentMouseRotY;
-      robotGroup.rotation.x = currentScrollRotX + currentMouseRotX;
+      // Combine Rotations for both groups (opposing base turns for contrast)
+      robotGroup1.rotation.y = -0.3 + idleTime * 0.05 + currentScrollRotY + currentMouseRotY;
+      robotGroup1.rotation.x = currentScrollRotX + currentMouseRotX;
+
+      robotGroup2.rotation.y = 0.4 - idleTime * 0.04 - currentScrollRotY + currentMouseRotY;
+      robotGroup2.rotation.x = currentScrollRotX + currentMouseRotX;
 
       // Lerp Scroll fraction for disassembly calculations
       currentScrollFraction += (targetScrollFraction - currentScrollFraction) * 0.08;
 
-      // Exploded View Disassembly translation (Aspect Ratio Calibration prevents clipping)
+      // Define split timeline segments for the two robots
+      // Robot 1: disassembles from scroll 0.0 to 0.5
+      const t1 = Math.min(1.0, currentScrollFraction * 2.0);
+      const explodeDist1 = t1;
+
+      // Robot 2: slides in and reassembles from scroll 0.4 to 1.0
+      const t2 = Math.max(0.0, Math.min(1.0, (currentScrollFraction - 0.4) / 0.6));
+      const explodeDist2 = 1.0 - t2; // starts disassembled (1.0), pulls together to assembled (0.0)
+
       const isMobile = window.innerWidth < 768;
       const limitMultiplier = isMobile ? 0.35 : 1.0;
-      const explodeDist = currentScrollFraction;
 
-      headGroup.position.y = headBaseY + explodeDist * 2.8 * limitMultiplier;
-      chestPlate.position.z = chestPlateBaseZ + explodeDist * 2.0 * limitMultiplier;
-      leftArmGroup.position.x = leftArmBaseX - explodeDist * 2.2 * limitMultiplier;
-      rightArmGroup.position.x = rightArmBaseX + explodeDist * 2.2 * limitMultiplier;
-      
-      // Minor arm joints flare out
-      leftArmGroup.rotation.z = -explodeDist * 0.4 * limitMultiplier;
-      rightArmGroup.rotation.z = explodeDist * 0.4 * limitMultiplier;
+      // Exploded View disassembly for Robot 1 meshes
+      if (disassemblyMeshes1.length > 0) {
+        disassemblyMeshes1.forEach((mesh) => {
+          if (mesh.userData.originalPosition && mesh.userData.disassemblyDir) {
+            const displacement = explodeDist1 * 4.5 * limitMultiplier;
+            mesh.position.copy(mesh.userData.originalPosition)
+              .addScaledVector(mesh.userData.disassemblyDir, displacement);
+          }
+        });
+      }
 
-      // Position centering adjustment depending on screen width
-      const targetGroupX = isMobile ? 0 : -2.0 + currentScrollFraction * 1.5;
-      robotGroup.position.x += (targetGroupX - robotGroup.position.x) * 0.08;
+      // Exploded View disassembly/reassembly for Robot 2 meshes
+      if (disassemblyMeshes2.length > 0) {
+        disassemblyMeshes2.forEach((mesh) => {
+          if (mesh.userData.originalPosition && mesh.userData.disassemblyDir) {
+            const displacement = explodeDist2 * 4.5 * limitMultiplier;
+            mesh.position.copy(mesh.userData.originalPosition)
+              .addScaledVector(mesh.userData.disassemblyDir, displacement);
+          }
+        });
+      }
 
-      // Lerp Scale (scroll zoom out + center mouse proximity scale boost)
-      const s = robotGroup.scale.x + (targetScale - robotGroup.scale.x) * 0.08;
-      robotGroup.scale.set(s, s, s);
+      // Robot 1 positioning: shifts off-screen left as we scroll down
+      const targetGroupX1 = isMobile ? -currentScrollFraction * 10.0 : -2.0 - currentScrollFraction * 12.0;
+      const targetGroupY1 = isMobile ? -2.2 + currentScrollFraction * 0.4 : -2.5 + currentScrollFraction * 0.6;
+      robotGroup1.position.x += (targetGroupX1 - robotGroup1.position.x) * 0.08;
+      robotGroup1.position.y += (targetGroupY1 - robotGroup1.position.y) * 0.08;
+
+      // Robot 2 positioning: slides in from right/below as we scroll down to specs/contact
+      const targetGroupX2 = isMobile ? 0 : 12.0 - t2 * 10.0; // slides in from x=12 to x=2
+      const targetGroupY2 = isMobile ? -8.0 + t2 * 5.8 : -2.5 + (1.0 - t2) * 0.4; // slides up from bottom
+      robotGroup2.position.x += (targetGroupX2 - robotGroup2.position.x) * 0.08;
+      robotGroup2.position.y += (targetGroupY2 - robotGroup2.position.y) * 0.08;
+
+      // Lerp Scales (Robot 2 starts at 0 and grows)
+      const s1 = robotGroup1.scale.x + (targetScale - robotGroup1.scale.x) * 0.08;
+      robotGroup1.scale.set(s1, s1, s1);
+
+      const s2 = robotGroup2.scale.x + (targetScale * t2 - robotGroup2.scale.x) * 0.08;
+      robotGroup2.scale.set(s2, s2, s2);
 
       // Light sweeps tracking cursor
       neonLight1.position.x += (targetLightX - neonLight1.position.x) * 0.05;
@@ -558,16 +615,31 @@
       neonLight2.position.x += (-targetLightX - neonLight2.position.x) * 0.05;
       neonLight2.position.y += (-targetLightY - neonLight2.position.y) * 0.05;
 
-      // Pulse neon intensities
-      neonLight1.intensity = 5 + Math.sin(elapsedTime * 4.0) * 1.5;
-      neonLight2.intensity = 4 + Math.cos(elapsedTime * 3.0) * 1.0;
+      // Pulsate neon intensities
+      neonLight1.intensity = 22 + Math.sin(elapsedTime * 4.0) * 4.0;
+      neonLight2.intensity = 16 + Math.cos(elapsedTime * 3.0) * 3.0;
+
+      // Dynamic Camera Perspective Shift based on Scroll Progress
+      // As user scrolls down, camera shifts to a dynamic high-angle side view
+      const targetCamX = isMobile ? 0 : currentScrollFraction * 5.0;
+      const targetCamY = isMobile ? 0 : currentScrollFraction * 6.0;
+      const targetCamZ = isMobile ? 25.0 : 25.0 - currentScrollFraction * 4.0;
+
+      camera.position.x += (targetCamX - camera.position.x) * 0.08;
+      camera.position.y += (targetCamY - camera.position.y) * 0.08;
+      camera.position.z += (targetCamZ - camera.position.z) * 0.08;
+
+      // Smoothly update camera focal lookAt point
+      const targetLookX = isMobile ? 0 : -1.5 + currentScrollFraction * 3.5;
+      const targetLookY = isMobile ? -1.6 + currentScrollFraction * 0.4 : -1.8 + currentScrollFraction * 0.6;
+      camera.lookAt(targetLookX, targetLookY, 0);
 
       renderer.render(scene, camera);
     }
 
     // Initialize scale
     adjustRobotScale();
-    // Run animation
+    // Start animation loop
     animate();
 
     // --- CAROUSEL LOGIC ---
