@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth bg-zinc-950 text-white">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APOLLO X | Industrial Powertrain</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            tech: ['Orbitron', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              neon: '#00ffcc',
+              orange: '#ff5533',
+              dark: '#050507'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Hide scrollbar for clean UI, yet retain scrolling functionality */
+    ::-webkit-scrollbar { display: none; }
+    html { scrollbar-width: none; }
+  </style>
+</head>
+<body class="font-sans antialiased overflow-x-hidden selection:bg-brand-neon selection:text-black">
+
+  <!-- Fixed 3D Canvas Background Container -->
+  <div class="fixed inset-0 w-full h-full z-0 overflow-hidden bg-[#050507]">
+    <!-- Background overlay gradients -->
+    <div class="absolute inset-0 z-10 bg-gradient-to-b from-brand-dark/95 via-transparent to-brand-dark/95 mix-blend-multiply pointer-events-none"></div>
+    <div class="absolute inset-0 z-10 bg-[radial-gradient(circle_at_center,transparent_30%,#050507_98%)] pointer-events-none"></div>
+    <div class="absolute inset-0 z-10 opacity-[0.02] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
+    
+    <!-- Three.js Canvas -->
+    <canvas id="bg-canvas" class="w-full h-full pointer-events-none"></canvas>
+  </div>
+
+  <!-- Highly Highlighted Navbar -->
+  <nav id="navbar" class="w-full border-b border-brand-neon/20 bg-brand-dark/60 backdrop-blur-xl fixed top-0 z-50 transition-all duration-500 ease-in-out py-4 shadow-[0_1px_15px_rgba(0,255,204,0.08)]">
+    <div class="max-w-7xl mx-auto px-8 flex items-center justify-between">
+      <a href="#" class="font-tech text-xl font-black tracking-[0.3em] text-white group">
+        APOLLO <span class="text-brand-neon font-light transition-all duration-300 group-hover:drop-shadow-[0_0_8px_#00ffcc]">SYSTEMS</span>
+      </a>
+      <div class="hidden md:flex items-center gap-10 font-tech text-[10px] tracking-[0.25em] text-zinc-400">
+        <a href="#overview" class="hover:text-white transition-colors">01 // OVERVIEW</a>
+        <a href="#specs" class="hover:text-white transition-colors">02 // SPECIFICATIONS</a>
+        <a href="#contact" class="relative group overflow-hidden border border-brand-neon/30 px-5 py-2.5 rounded bg-brand-neon/5 text-brand-neon">
+          <span class="relative z-10 font-bold">INITIATE CONTACT</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Interactive UI Overlay -->
+  <main class="relative z-20 w-full">
+    
+    <!-- Hero Section -->
+    <section id="overview" class="min-h-screen flex flex-col justify-center items-start px-8 md:px-24 max-w-5xl">
+      <div class="space-y-6">
+        <div class="inline-flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+          <span class="w-2 h-2 rounded-full bg-brand-neon animate-pulse"></span>
+          <span class="font-tech text-[10px] tracking-[0.3em] text-zinc-300 uppercase">CORE ACTUATOR: LAYER_01</span>
+        </div>
+        <h1 class="font-tech text-6xl md:text-9xl font-black tracking-tighter leading-none text-white mix-blend-difference">
+          MAN <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-neon to-emerald-400">+</span> MACHINE.
+        </h1>
+        <p class="text-zinc-400 text-lg max-w-lg font-light tracking-wide leading-relaxed">
+          High-performance electric powertrain nodes custom-engineered for modern humanoid robotics and industrial kinetics.
+        </p>
+        <div class="pt-4">
+          <div class="w-12 h-[1px] bg-brand-neon animate-bounce"></div>
+          <span class="font-tech text-[9px] tracking-widest text-zinc-500 mt-2 block">SCROLL TO DISASSEMBLE</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Specs Card Carousel Section -->
+    <section id="specs" class="min-h-screen flex flex-col justify-center items-end px-8 md:px-24 bg-gradient-to-t from-brand-dark via-transparent to-transparent select-none">
+      <div class="w-full max-w-lg relative flex flex-col items-center">
+        
+        <!-- Navigation Buttons -->
+        <div class="absolute top-1/2 -left-6 -right-6 -translate-y-1/2 flex justify-between pointer-events-none z-30 px-2">
+          <button id="prev-btn" class="w-10 h-10 rounded-full bg-zinc-950/80 border border-white/10 hover:border-brand-neon hover:text-brand-neon flex items-center justify-center text-white pointer-events-auto transition-all shadow-lg" aria-label="Previous specification">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button id="next-btn" class="w-10 h-10 rounded-full bg-zinc-950/80 border border-white/10 hover:border-brand-neon hover:text-brand-neon flex items-center justify-center text-white pointer-events-auto transition-all shadow-lg" aria-label="Next specification">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+        <!-- Carousel Window -->
+        <div class="w-full overflow-hidden px-4 py-6">
+          <div id="carousel-track" class="flex transition-transform duration-500 ease-in-out gap-8">
+            
+            <!-- Card 1: Actuator Specs -->
+            <div class="carousel-card w-full flex-shrink-0 bg-zinc-950/50 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.8)] space-y-6 transform transition-all duration-300">
+              <div class="border-b border-white/10 pb-4">
+                <span class="font-tech text-[10px] tracking-widest text-brand-neon block mb-1">DATA DIAGNOSTIC // CARD 01</span>
+                <h2 class="font-tech text-2xl font-bold tracking-wider text-white">AUB-01 SPECIFICATIONS</h2>
+              </div>
+              <div class="grid grid-cols-2 gap-4 font-tech">
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">PEAK TORQUE</span>
+                  <span class="text-xl font-bold text-white">145 <span class="text-xs text-brand-neon">Nm</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">TOTAL MASS</span>
+                  <span class="text-xl font-bold text-white">1.2 <span class="text-xs text-brand-neon">kg</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">OPERATING VOLT</span>
+                  <span class="text-xl font-bold text-white">48 <span class="text-xs text-brand-neon">V</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">THERMAL CEIL</span>
+                  <span class="text-xl font-bold text-white">85 <span class="text-xs text-brand-orange">°C</span></span>
+                </div>
+              </div>
+              <p class="text-zinc-400 text-xs font-light leading-relaxed">
+                Integrated structural loops coupled with high-density absolute encoders optimize real-time trajectory processing.
+              </p>
+            </div>
+
+            <!-- Card 2: Lidar/Sensors Specs -->
+            <div class="carousel-card w-full flex-shrink-0 bg-zinc-950/50 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.8)] space-y-6 transform transition-all duration-300">
+              <div class="border-b border-white/10 pb-4">
+                <span class="font-tech text-[10px] tracking-widest text-brand-neon block mb-1">DATA DIAGNOSTIC // CARD 02</span>
+                <h2 class="font-tech text-2xl font-bold tracking-wider text-white">SEN-02 SPATIAL LIDAR</h2>
+              </div>
+              <div class="grid grid-cols-2 gap-4 font-tech">
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">SCAN RANGE</span>
+                  <span class="text-xl font-bold text-white">50 <span class="text-xs text-brand-neon">m</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">REFRESH RATE</span>
+                  <span class="text-xl font-bold text-white">30 <span class="text-xs text-brand-neon">Hz</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">SPATIAL RES</span>
+                  <span class="text-xl font-bold text-white">1 <span class="text-xs text-brand-neon">mm</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">LATENCY TIME</span>
+                  <span class="text-xl font-bold text-white">&lt; 1 <span class="text-xs text-brand-neon">ms</span></span>
+                </div>
+              </div>
+              <p class="text-zinc-400 text-xs font-light leading-relaxed">
+                Solid-state beam steering arrays generate detailed real-time 3D point clouds for autonomous navigation cells.
+              </p>
+            </div>
+
+            <!-- Card 3: Energy Pack Specs -->
+            <div class="carousel-card w-full flex-shrink-0 bg-zinc-950/50 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.8)] space-y-6 transform transition-all duration-300">
+              <div class="border-b border-white/10 pb-4">
+                <span class="font-tech text-[10px] tracking-widest text-brand-neon block mb-1">DATA DIAGNOSTIC // CARD 03</span>
+                <h2 class="font-tech text-2xl font-bold tracking-wider text-white">BAT-03 ENERGY CELL</h2>
+              </div>
+              <div class="grid grid-cols-2 gap-4 font-tech">
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">CAPACITY</span>
+                  <span class="text-xl font-bold text-white">2.4 <span class="text-xs text-brand-neon">kWh</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">TOTAL WEIGHT</span>
+                  <span class="text-xl font-bold text-white">12 <span class="text-xs text-brand-neon">kg</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">MAX DISCHARGE</span>
+                  <span class="text-xl font-bold text-white">120 <span class="text-xs text-brand-neon">A</span></span>
+                </div>
+                <div class="bg-white/[0.02] border border-white/5 p-4 rounded-lg">
+                  <span class="text-zinc-500 text-[9px] block tracking-wider">RATED VOLTAGE</span>
+                  <span class="text-xl font-bold text-white">100 <span class="text-xs text-brand-neon">V</span></span>
+                </div>
+              </div>
+              <p class="text-zinc-400 text-xs font-light leading-relaxed">
+                Smart battery management systems (BMS) with hot-swappable cells protect mission runtime during high loads.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Indicator Dots -->
+        <div class="flex gap-2 mt-4">
+          <button class="carousel-dot w-6 h-1.5 bg-brand-neon transition-all" aria-label="Slide 1"></button>
+          <button class="carousel-dot w-2 h-1.5 bg-white/20 hover:bg-brand-neon transition-all" aria-label="Slide 2"></button>
+          <button class="carousel-dot w-2 h-1.5 bg-white/20 hover:bg-brand-neon transition-all" aria-label="Slide 3"></button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Dynamic Contact form for scrolling space -->
+    <section id="contact" class="min-h-screen flex items-center justify-start px-8 md:px-24 border-t border-white/5 bg-zinc-950/20 backdrop-blur-sm">
+      <div class="w-full max-w-md bg-zinc-950/40 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-2xl space-y-6">
+        <div>
+          <span class="font-tech text-[10px] tracking-widest text-brand-neon">INITIATE CONTACT //</span>
+          <h2 class="font-tech text-xl font-black text-white mt-1">TELEMETRY ACCESS</h2>
+        </div>
+        <form class="space-y-4" onsubmit="event.preventDefault(); alert('Telemetry channel opened.');">
+          <input type="email" placeholder="ENTER TELEMETRY EMAIL" required class="w-full bg-black/40 border border-white/10 px-4 py-3 font-tech text-xs text-white placeholder-zinc-700 rounded focus:outline-none focus:border-brand-neon transition-all">
+          <button type="submit" class="w-full bg-brand-neon text-black font-tech text-xs font-bold py-3 rounded hover:bg-white hover:text-black transition-all tracking-[0.2em] uppercase">OPEN_CHANNEL</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- --- THREE.JS & INTERACTIVE SCRIPTS --- -->
+  <script>
+    // --- NAVBAR HIDE/REVEAL ON SCROLL ---
+    const navbar = document.getElementById('navbar');
+    let lastScrollY = window.scrollY;
+
+    window.addEventListener('scroll', () => {
+      const scrollY = window.scrollY;
+      if (scrollY > 50) {
+        navbar.classList.add('bg-brand-dark/80', 'py-3', 'border-brand-neon/10');
+      } else {
+        navbar.classList.remove('bg-brand-dark/80', 'py-3', 'border-brand-neon/10');
+      }
+      
+      // Hide on scroll down, reveal on scroll up
+      if (scrollY > 100 && scrollY > lastScrollY) {
+        navbar.classList.add('-translate-y-full');
+      } else {
+        navbar.classList.remove('-translate-y-full');
+      }
+      lastScrollY = scrollY;
+    });
+
+    // --- INTERACTIVE SCROLL & CURSOR PARAMETERS ---
+    let targetScrollFraction = 0;
+    let currentScrollFraction = 0;
+
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetMouseRotationX = 0;
+    let targetMouseRotationY = 0;
+    
+    // Kinetic mouse velocity variables
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let mouseSpeed = 0;
+    
+    // Smooth light coordinates
+    let targetLightX = 0;
+    let targetLightY = 0;
+
+    let targetScale = 1.2;
+
+    // Scroll listener
+    window.addEventListener('scroll', () => {
+      const scrollY = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      
+      if (maxScroll > 0) {
+        targetScrollFraction = scrollY / maxScroll;
+      }
+      adjustRobotScale();
+    });
+
+    // Proximity to center scale logic
+    function adjustRobotScale() {
+      const isMobile = window.innerWidth < 768;
+      const baseScale = isMobile ? 0.8 : 1.25;
+      
+      // Scale down slightly as user scrolls down
+      const scrollFactor = 1.0 - targetScrollFraction * 0.2;
+      
+      // Mouse proximity: closer to center increases scale slightly
+      const distFromCenter = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
+      const proximityBoost = Math.max(0, 0.15 * (1.0 - distFromCenter));
+      
+      targetScale = baseScale * scrollFactor + proximityBoost;
+    }
+
+    // Mousemove listener
+    window.addEventListener('mousemove', (e) => {
+      // 1. Normalize coordinates (-1 to 1) for parallax tilt
+      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+      
+      targetMouseRotationY = mouseX * 0.4;
+      targetMouseRotationX = mouseY * 0.4;
+
+      adjustRobotScale();
+
+      // 2. Light coordinates
+      targetLightX = mouseX * 15;
+      targetLightY = -mouseY * 15;
+
+      // 3. Kinetic speed calculation
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      mouseSpeed = Math.min(1.8, mouseSpeed + distance * 0.015);
+      
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    // --- THREE.JS SCENE SETUP ---
+    const canvas = document.getElementById('bg-canvas');
+    const scene = new THREE.Scene();
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 25;
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      alpha: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // --- PROCEDURAL 3D ROBOT CONSTRUCTION ---
+    const robotGroup = new THREE.Group();
+    scene.add(robotGroup);
+
+    // Materials
+    const metalMaterial = new THREE.MeshStandardMaterial({
+      color: 0x14161d,      // Solid metallic gunmetal chest plate
+      metalness: 0.95,
+      roughness: 0.1
+    });
+
+    const wireframeMaterial = new THREE.MeshStandardMaterial({
+      color: 0x00ffcc,      // Glowing cyan wireframes
+      wireframe: true,
+      metalness: 0.9,
+      roughness: 0.05
+    });
+
+    const darkWireframeMaterial = new THREE.MeshStandardMaterial({
+      color: 0x242838,      // Dark iron structural grid wireframe
+      wireframe: true,
+      metalness: 0.95,
+      roughness: 0.1
+    });
+
+    const visorGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ffcc       // Cybernetic cyan visor glow
+    });
+
+    const jointMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff5533,      // Industrial Orange joints
+      wireframe: true,
+      metalness: 0.8,
+      roughness: 0.2
+    });
+
+    // 1. Torso Base
+    const chestGeom = new THREE.BoxGeometry(2.4, 1.8, 1.6);
+    const chestMesh = new THREE.Mesh(chestGeom, darkWireframeMaterial);
+    robotGroup.add(chestMesh);
+
+    const waistGeom = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 8);
+    const waistMesh = new THREE.Mesh(waistGeom, jointMaterial);
+    waistMesh.position.y = -1.5;
+    robotGroup.add(waistMesh);
+
+    const hipsGeom = new THREE.BoxGeometry(2.0, 0.6, 1.4);
+    const hipsMesh = new THREE.Mesh(hipsGeom, darkWireframeMaterial);
+    hipsMesh.position.y = -2.2;
+    robotGroup.add(hipsMesh);
+
+    // 2. Chest Plate (slides forward on scroll disassembly)
+    const chestPlateGeom = new THREE.BoxGeometry(2.6, 1.4, 0.3);
+    const chestPlate = new THREE.Mesh(chestPlateGeom, metalMaterial);
+    const chestPlateBaseZ = 0.85;
+    chestPlate.position.set(0, 0.1, chestPlateBaseZ);
+    robotGroup.add(chestPlate);
+
+    // 3. Head Assembly (slides up on scroll disassembly)
+    const headGroup = new THREE.Group();
+    const headBaseY = 1.9;
+    headGroup.position.set(0, headBaseY, 0);
+
+    const neckGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.6, 8);
+    const neckMesh = new THREE.Mesh(neckGeom, darkWireframeMaterial);
+    neckMesh.position.y = -0.6;
+    headGroup.add(neckMesh);
+
+    const headGeom = new THREE.BoxGeometry(1.3, 1.1, 1.1);
+    const headMesh = new THREE.Mesh(headGeom, wireframeMaterial);
+    headGroup.add(headMesh);
+
+    const visorGeom = new THREE.BoxGeometry(1.0, 0.16, 0.1);
+    const visorMesh = new THREE.Mesh(visorGeom, visorGlowMaterial);
+    visorMesh.position.set(0, 0.15, 0.56);
+    headGroup.add(visorMesh);
+
+    robotGroup.add(headGroup);
+
+    // 4. Arms (slide outward on scroll disassembly)
+    const leftArmGroup = new THREE.Group();
+    const leftArmBaseX = -1.6;
+    leftArmGroup.position.set(leftArmBaseX, 0.6, 0);
+
+    const leftShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), jointMaterial);
+    leftArmGroup.add(leftShoulder);
+
+    const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.8, 8), darkWireframeMaterial);
+    leftUpperArm.position.y = -0.9;
+    leftUpperArm.rotation.z = 0.1;
+    leftArmGroup.add(leftUpperArm);
+
+    const leftElbow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), jointMaterial);
+    leftElbow.position.y = -1.8;
+    leftArmGroup.add(leftElbow);
+
+    const leftLowerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.6, 8), wireframeMaterial);
+    leftLowerArm.position.y = -2.6;
+    leftArmGroup.add(leftLowerArm);
+
+    robotGroup.add(leftArmGroup);
+
+    const rightArmGroup = new THREE.Group();
+    const rightArmBaseX = 1.6;
+    rightArmGroup.position.set(rightArmBaseX, 0.6, 0);
+
+    const rightShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), jointMaterial);
+    rightArmGroup.add(rightShoulder);
+
+    const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.2, 1.8, 8), darkWireframeMaterial);
+    rightUpperArm.position.y = -0.9;
+    rightUpperArm.rotation.z = -0.1;
+    rightArmGroup.add(rightUpperArm);
+
+    const rightElbow = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), jointMaterial);
+    rightElbow.position.y = -1.8;
+    rightArmGroup.add(rightElbow);
+
+    const rightLowerArm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.6, 8), wireframeMaterial);
+    rightLowerArm.position.y = -2.6;
+    rightArmGroup.add(rightLowerArm);
+
+    robotGroup.add(rightArmGroup);
+
+    // Initial position shift for better visual layout placement
+    robotGroup.position.set(-1.5, 0, 0);
+    // Let's adjust starting orientation
+    robotGroup.rotation.y = -0.3;
+
+    // --- LIGHTS ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+    scene.add(ambientLight);
+
+    // Cyan Neon dynamic PointLight
+    const neonLight1 = new THREE.PointLight(0x00ffcc, 5, 45);
+    neonLight1.position.set(5, 5, 10);
+    scene.add(neonLight1);
+
+    // Orange Neon mirror PointLight
+    const neonLight2 = new THREE.PointLight(0xff5533, 4, 30);
+    neonLight2.position.set(-5, -5, -5);
+    scene.add(neonLight2);
+
+    // Accent directional light
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    dirLight.position.set(10, 20, 15);
+    scene.add(dirLight);
+
+    // --- RESPONSIVE RESIZE HANDLING ---
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      adjustRobotScale();
+    });
+
+    // --- RENDER LOOP ---
+    const clock = new THREE.Clock();
+    
+    let currentScrollRotY = 0;
+    let currentScrollRotX = 0;
+    let currentMouseRotY = 0;
+    let currentMouseRotX = 0;
+    let idleTime = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const elapsedTime = clock.getElapsedTime();
+
+      // Kinetic speed decay
+      mouseSpeed *= 0.95;
+      
+      // Speed up idle animations during rapid mouse drags
+      idleTime += delta * (1.0 + mouseSpeed * 5.0);
+
+      // Lerp Scroll interactive rotation offsets
+      currentScrollRotY += (targetScrollFraction * 3.5 - currentScrollRotY) * 0.08;
+      currentScrollRotX += (targetScrollFraction * 0.5 - currentScrollRotX) * 0.08;
+
+      // Lerp Mouse interactive parallax rotation offsets
+      currentMouseRotY += (targetMouseRotationY - currentMouseRotY) * 0.06;
+      currentMouseRotX += (targetMouseRotationX - currentMouseRotX) * 0.06;
+
+      // Combine Rotations (Base slow turn + scroll turn + mouse tilt)
+      robotGroup.rotation.y = -0.3 + idleTime * 0.05 + currentScrollRotY + currentMouseRotY;
+      robotGroup.rotation.x = currentScrollRotX + currentMouseRotX;
+
+      // Lerp Scroll fraction for disassembly calculations
+      currentScrollFraction += (targetScrollFraction - currentScrollFraction) * 0.08;
+
+      // Exploded View Disassembly translation (Aspect Ratio Calibration prevents clipping)
+      const isMobile = window.innerWidth < 768;
+      const limitMultiplier = isMobile ? 0.35 : 1.0;
+      const explodeDist = currentScrollFraction;
+
+      headGroup.position.y = headBaseY + explodeDist * 2.8 * limitMultiplier;
+      chestPlate.position.z = chestPlateBaseZ + explodeDist * 2.0 * limitMultiplier;
+      leftArmGroup.position.x = leftArmBaseX - explodeDist * 2.2 * limitMultiplier;
+      rightArmGroup.position.x = rightArmBaseX + explodeDist * 2.2 * limitMultiplier;
+      
+      // Minor arm joints flare out
+      leftArmGroup.rotation.z = -explodeDist * 0.4 * limitMultiplier;
+      rightArmGroup.rotation.z = explodeDist * 0.4 * limitMultiplier;
+
+      // Position centering adjustment depending on screen width
+      const targetGroupX = isMobile ? 0 : -2.0 + currentScrollFraction * 1.5;
+      robotGroup.position.x += (targetGroupX - robotGroup.position.x) * 0.08;
+
+      // Lerp Scale (scroll zoom out + center mouse proximity scale boost)
+      const s = robotGroup.scale.x + (targetScale - robotGroup.scale.x) * 0.08;
+      robotGroup.scale.set(s, s, s);
+
+      // Light sweeps tracking cursor
+      neonLight1.position.x += (targetLightX - neonLight1.position.x) * 0.05;
+      neonLight1.position.y += (targetLightY - neonLight1.position.y) * 0.05;
+      
+      neonLight2.position.x += (-targetLightX - neonLight2.position.x) * 0.05;
+      neonLight2.position.y += (-targetLightY - neonLight2.position.y) * 0.05;
+
+      // Pulse neon intensities
+      neonLight1.intensity = 5 + Math.sin(elapsedTime * 4.0) * 1.5;
+      neonLight2.intensity = 4 + Math.cos(elapsedTime * 3.0) * 1.0;
+
+      renderer.render(scene, camera);
+    }
+
+    // Initialize scale
+    adjustRobotScale();
+    // Run animation
+    animate();
+
+    // --- CAROUSEL LOGIC ---
+    const track = document.getElementById('carousel-track');
+    const cards = document.querySelectorAll('.carousel-card');
+    const dots = document.querySelectorAll('.carousel-dot');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    let activeIndex = 0;
+
+    // Cache card width computation to keep rendering loop at a solid 60fps
+    let cachedCardWidth = 0;
+    function recacheDimensions() {
+      if (cards.length > 0) {
+        cachedCardWidth = cards[0].getBoundingClientRect().width;
+      }
+    }
+
+    function updateCarousel() {
+      if (cachedCardWidth === 0) recacheDimensions();
+      const gap = 32; // gap-8 spacing is 2rem (32px)
+      
+      // Translation slide shift
+      track.style.transform = `translateX(-${activeIndex * (cachedCardWidth + gap)}px)`;
+      
+      // Update dots highlights
+      dots.forEach((dot, idx) => {
+        if (idx === activeIndex) {
+          dot.className = 'carousel-dot w-6 h-1.5 bg-brand-neon transition-all';
+        } else {
+          dot.className = 'carousel-dot w-2 h-1.5 bg-white/20 hover:bg-brand-neon transition-all';
+        }
+      });
+
+      // Scale and style highlights on the active card
+      cards.forEach((card, idx) => {
+        if (idx === activeIndex) {
+          card.style.opacity = '1';
+          card.style.transform = 'scale(1.02)';
+          card.style.borderColor = 'rgba(0, 255, 204, 0.4)';
+          card.style.boxShadow = '0 10px 30px rgba(0, 255, 204, 0.15)';
+        } else {
+          card.style.opacity = '0.35';
+          card.style.transform = 'scale(0.98)';
+          card.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+          card.style.boxShadow = 'none';
+        }
+      });
+    }
+
+    nextBtn.addEventListener('click', () => {
+      activeIndex = (activeIndex + 1) % cards.length;
+      updateCarousel();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      activeIndex = (activeIndex - 1 + cards.length) % cards.length;
+      updateCarousel();
+    });
+
+    dots.forEach((dot, idx) => {
+      dot.addEventListener('click', () => {
+        activeIndex = idx;
+        updateCarousel();
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      recacheDimensions();
+      updateCarousel();
+    });
+
+    // Run carousel initializer
+    recacheDimensions();
+    setTimeout(updateCarousel, 250);
+  </script>
+</body>
+</html>
