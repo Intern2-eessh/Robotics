@@ -7,7 +7,7 @@ const MINI_ROBOT_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAioAAAIq
 
 // Global variables for Three.js scene setup
 let scene, camera, renderer, controls;
-let robotGroup, proceduralRobot, miniRobot;
+let robotGroup, proceduralRobot, miniRobot, catRobot;
 let clock;
 
 // Interactive Raycasting & Hovering
@@ -85,7 +85,7 @@ function init() {
 
     // 4. Setup Renderer
     const canvas = document.getElementById('webgl');
-    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -122,6 +122,13 @@ function init() {
     miniRobot.scale.set(1.7, 1.7, 1.7); // Scaled up another 30% (total 70% increase)
     scene.add(miniRobot);
     buildMiniRobot();
+
+    // Build Yellow Cat Robot Group (Phase 3 Bot)
+    catRobot = new THREE.Group();
+    catRobot.position.set(-1.5, 0.3, 0); // Position on the LHS of contact portal
+    catRobot.scale.set(0, 0, 0); // Start hidden
+    scene.add(catRobot);
+    buildCatRobot();
 
     // 9. Build Procedural Model as default/fallback
     buildProceduralRobot();
@@ -171,6 +178,13 @@ function setupLights() {
     magentaLight.target.position.set(0, 1, 0);
     scene.add(magentaLight);
     scene.add(magentaLight.target);
+
+    // Warm Key Spotlight for LHS models (prevents yellow/orange color shift under cyan light)
+    const contactLight = new THREE.SpotLight(0xfff2e0, 12.0, 12, Math.PI / 4, 0.5, 1);
+    contactLight.position.set(-3.5, 3.0, 4.0);
+    contactLight.target.position.set(-1.5, 0.9, 0);
+    scene.add(contactLight);
+    scene.add(contactLight.target);
 }
 
 // -------------------------------------------------------------
@@ -824,6 +838,274 @@ function buildMiniRobot() {
 // -------------------------------------------------------------
 // DYNAMIC EYES FACE DRAWING (Blinking expressions)
 // -------------------------------------------------------------
+function buildCatRobot() {
+    const yellowArmorMaterial = new THREE.MeshStandardMaterial({
+        color: 0xfacc15, // Bumblebee Yellow
+        roughness: 0.15,
+        metalness: 0.8,
+        name: 'yellowArmor'
+    });
+
+    const darkChassisMaterial = new THREE.MeshStandardMaterial({
+        color: 0x18181b, // Zinc-900 matte black/grey
+        roughness: 0.5,
+        metalness: 0.2,
+        name: 'darkChassis'
+    });
+
+    const darkMetalMaterial = new THREE.MeshStandardMaterial({
+        color: 0x1e293b, // Slate dark metal joints
+        roughness: 0.15,
+        metalness: 0.9,
+        name: 'darkMetal'
+    });
+
+    const glowingGreenMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00f5ab, // Vibrant glowing green/cyan
+        emissive: new THREE.Color(0x00f5ab),
+        emissiveIntensity: 3.5,
+        roughness: 0.1,
+        metalness: 0.1,
+        name: 'glowingGreen'
+    });
+
+    const glassFaceMaterial = new THREE.MeshStandardMaterial({
+        color: 0x050508, // Glossy faceplate black
+        roughness: 0.02,
+        metalness: 0.95,
+        name: 'glassFace'
+    });
+
+    // --- Neck ---
+    const neckGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.08, 16);
+    const neck = new THREE.Mesh(neckGeo, darkMetalMaterial);
+    neck.position.set(0, 1.03, 0);
+    catRobot.add(neck);
+
+    // --- Head Group ---
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 1.15, 0.02);
+    catRobot.add(headGroup);
+
+    // Large main helmet dome (Glossy Yellow)
+    const helmetGeo = new THREE.SphereGeometry(0.28, 32, 32);
+    const helmet = new THREE.Mesh(helmetGeo, yellowArmorMaterial);
+    headGroup.add(helmet);
+
+    // Cat Ears (Left & Right)
+    // Left Outer Ear
+    const earLGeo = new THREE.BoxGeometry(0.12, 0.2, 0.1);
+    const earL = new THREE.Mesh(earLGeo, yellowArmorMaterial);
+    earL.position.set(-0.21, 0.22, -0.04);
+    earL.rotation.set(-0.15, 0.1, 0.4);
+    headGroup.add(earL);
+
+    // Left Inner Ear (Glowing Green)
+    const innerEarLGeo = new THREE.BoxGeometry(0.08, 0.14, 0.04);
+    const innerEarL = new THREE.Mesh(innerEarLGeo, glowingGreenMaterial);
+    innerEarL.position.set(-0.20, 0.23, -0.01);
+    innerEarL.rotation.set(-0.15, 0.1, 0.4);
+    headGroup.add(innerEarL);
+
+    // Right Outer Ear
+    const earRGeo = new THREE.BoxGeometry(0.12, 0.2, 0.1);
+    const earR = new THREE.Mesh(earRGeo, yellowArmorMaterial);
+    earR.position.set(0.21, 0.22, -0.04);
+    earR.rotation.set(-0.15, -0.1, -0.4);
+    headGroup.add(earR);
+
+    // Right Inner Ear (Glowing Green)
+    const innerEarRGeo = new THREE.BoxGeometry(0.08, 0.14, 0.04);
+    const innerEarR = new THREE.Mesh(innerEarRGeo, glowingGreenMaterial);
+    innerEarR.position.set(0.20, 0.23, -0.01);
+    innerEarR.rotation.set(-0.15, -0.1, -0.4);
+    headGroup.add(innerEarR);
+
+    // Glossy black glass faceplate
+    const faceplateGeo = new THREE.SphereGeometry(0.275, 32, 16, 0, Math.PI, 0, Math.PI / 2);
+    faceplateGeo.rotateX(Math.PI / 2);
+    const faceplate = new THREE.Mesh(faceplateGeo, glassFaceMaterial);
+    faceplate.position.set(0, 0.02, 0.025);
+    faceplate.scale.set(1.01, 0.8, 1.02);
+    headGroup.add(faceplate);
+
+    // Giant circular glowing green eyes
+    const eyeGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.01, 24);
+    eyeGeo.rotateX(Math.PI / 2);
+
+    const eyeL = new THREE.Mesh(eyeGeo, glowingGreenMaterial);
+    eyeL.position.set(-0.11, 0.02, 0.23);
+    headGroup.add(eyeL);
+
+    const eyeR = new THREE.Mesh(eyeGeo, glowingGreenMaterial);
+    eyeR.position.set(0.11, 0.02, 0.23);
+    headGroup.add(eyeR);
+
+    // Forehead armor crest plate
+    const foreheadPlate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.06), silverMaterial);
+    foreheadPlate.position.set(0, 0.15, 0.20);
+    foreheadPlate.rotation.x = -0.4;
+    headGroup.add(foreheadPlate);
+
+    const foreheadLight = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), glowingGreenMaterial);
+    foreheadLight.position.set(0, 0.16, 0.23);
+    headGroup.add(foreheadLight);
+
+    // --- 3. Torso (Bumblebee Yellow Body) ---
+    const torsoGeo = new THREE.SphereGeometry(0.22, 32, 32);
+    torsoGeo.scale(1.0, 1.25, 0.9);
+    const torso = new THREE.Mesh(torsoGeo, yellowArmorMaterial);
+    torso.position.set(0, 0.72, 0);
+    catRobot.add(torso);
+
+    // Chest armor plates
+    const chestPlateL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.18, 0.08), yellowArmorMaterial);
+    chestPlateL.position.set(-0.09, 0.76, 0.15);
+    chestPlateL.rotation.set(0.15, 0.1, -0.05);
+    catRobot.add(chestPlateL);
+
+    const chestPlateR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.18, 0.08), yellowArmorMaterial);
+    chestPlateR.position.set(0.09, 0.76, 0.15);
+    chestPlateR.rotation.set(0.15, -0.1, 0.05);
+    catRobot.add(chestPlateR);
+
+    // Chest center detail panel
+    const chestPanel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.04), darkMetalMaterial);
+    chestPanel.position.set(0, 0.76, 0.18);
+    catRobot.add(chestPanel);
+
+    const chestLight = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 16), glowingGreenMaterial);
+    chestLight.rotateX(Math.PI / 2);
+    chestLight.position.set(0, 0.76, 0.20);
+    catRobot.add(chestLight);
+
+    // Pelvis base
+    const pelvisGeo = new THREE.CylinderGeometry(0.16, 0.14, 0.12, 16);
+    const pelvis = new THREE.Mesh(pelvisGeo, darkMetalMaterial);
+    pelvis.position.set(0, 0.52, 0);
+    catRobot.add(pelvis);
+
+    // --- 4. Arms & Hands ---
+    // --- Left Arm ---
+    const shoulderL = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), darkMetalMaterial);
+    shoulderL.position.set(-0.28, 0.78, 0);
+    catRobot.add(shoulderL);
+
+    const armLGroup = new THREE.Group();
+    armLGroup.position.set(-0.28, 0.76, 0);
+    catRobot.add(armLGroup);
+
+    const bicepL = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 12), darkMetalMaterial);
+    bicepL.position.y = -0.06;
+    armLGroup.add(bicepL);
+
+    const forearmL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), yellowArmorMaterial);
+    forearmL.scale.set(1.0, 1.3, 1.0);
+    forearmL.position.y = -0.18;
+    armLGroup.add(forearmL);
+
+    const handL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.06), darkMetalMaterial);
+    handL.position.y = -0.28;
+    armLGroup.add(handL);
+
+    // --- Right Arm ---
+    const shoulderR = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 16), darkMetalMaterial);
+    shoulderR.position.set(0.28, 0.78, 0);
+    catRobot.add(shoulderR);
+
+    const armRGroup = new THREE.Group();
+    armRGroup.position.set(0.28, 0.76, 0);
+    catRobot.add(armRGroup);
+
+    const bicepR = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 12), darkMetalMaterial);
+    bicepR.position.y = -0.06;
+    armRGroup.add(bicepR);
+
+    const forearmR = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), yellowArmorMaterial);
+    forearmR.scale.set(1.0, 1.3, 1.0);
+    forearmR.position.y = -0.18;
+    armRGroup.add(forearmR);
+
+    const handR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 0.06), darkMetalMaterial);
+    handR.position.y = -0.28;
+    armRGroup.add(handR);
+
+    // --- 5. Hips & Legs ---
+    // --- Left Leg ---
+    const hipL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), darkMetalMaterial);
+    hipL.position.set(-0.12, 0.46, 0);
+    catRobot.add(hipL);
+
+    const legLGroup = new THREE.Group();
+    legLGroup.position.set(-0.12, 0.42, 0);
+    catRobot.add(legLGroup);
+
+    const thighL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.18, 16), yellowArmorMaterial);
+    thighL.position.y = -0.09;
+    legLGroup.add(thighL);
+
+    const kneeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), darkMetalMaterial);
+    kneeL.position.y = -0.20;
+    legLGroup.add(kneeL);
+
+    const shinL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.18, 16), yellowArmorMaterial);
+    shinL.position.y = -0.30;
+    legLGroup.add(shinL);
+
+    const footLGroup = new THREE.Group();
+    footLGroup.position.set(0, -0.42, 0.02);
+    legLGroup.add(footLGroup);
+
+    const bootL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.06, 24), yellowArmorMaterial);
+    footLGroup.add(bootL);
+
+    const soleRingL = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.015, 8, 24), glowingGreenMaterial);
+    soleRingL.rotateX(Math.PI / 2);
+    soleRingL.position.y = -0.035;
+    footLGroup.add(soleRingL);
+
+    // --- Right Leg ---
+    const hipR = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), darkMetalMaterial);
+    hipR.position.set(0.12, 0.46, 0);
+    catRobot.add(hipR);
+
+    const legRGroup = new THREE.Group();
+    legRGroup.position.set(0.12, 0.42, 0);
+    catRobot.add(legRGroup);
+
+    const thighR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.18, 16), yellowArmorMaterial);
+    thighR.position.y = -0.09;
+    legRGroup.add(thighR);
+
+    const kneeR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), darkMetalMaterial);
+    kneeR.position.y = -0.20;
+    legRGroup.add(kneeR);
+
+    const shinR = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.18, 16), yellowArmorMaterial);
+    shinR.position.y = -0.30;
+    legRGroup.add(shinR);
+
+    const footRGroup = new THREE.Group();
+    footRGroup.position.set(0, -0.42, 0.02);
+    legRGroup.add(footRGroup);
+
+    const bootR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.06, 24), yellowArmorMaterial);
+    footRGroup.add(bootR);
+
+    const soleRingR = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.015, 8, 24), glowingGreenMaterial);
+    soleRingR.rotateX(Math.PI / 2);
+    soleRingR.position.y = -0.035;
+    footRGroup.add(soleRingR);
+
+    // --- Enable Shadows Automatically ---
+    catRobot.traverse((node) => {
+        if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = false; // Prevent shadow acne
+        }
+    });
+}
+
 function setupDynamicFace() {
     faceCanvas = document.createElement('canvas');
     faceCanvas.width = 256;
@@ -1538,6 +1820,12 @@ function animate() {
         miniRobot.position.y = 0.3 + Math.sin(time * 1.5) * 0.04;
     }
 
+    // Rotate and bob Yellow Cat Bot (Phase 3)
+    if (catRobot && currentPhase === 3) {
+        catRobot.rotation.y += 0.006;
+        catRobot.position.y = 0.3 + Math.sin(time * 1.5) * 0.04;
+    }
+
     // 2. Drive procedural animations if GLTF loader isn't active
     updateProceduralAnimations(time);
 
@@ -1644,6 +1932,10 @@ function setActivePhase(phaseNum) {
         gsap.killTweensOf(miniRobot.position);
         gsap.killTweensOf(miniRobot.scale);
     }
+    if (catRobot) {
+        gsap.killTweensOf(catRobot.position);
+        gsap.killTweensOf(catRobot.scale);
+    }
 
     if (phaseNum === 1) {
         // Phase 1: Show 3D Canvas with rotating miniRobot, hide hologram
@@ -1656,6 +1948,10 @@ function setActivePhase(phaseNum) {
         if (miniRobot) {
             gsap.to(miniRobot.scale, { x: 1.7, y: 1.7, z: 1.7, duration: 1.2, ease: 'power2.out' });
             gsap.to(miniRobot.position, { x: 1.6, y: 0.3, z: 0, duration: 1.2, ease: 'power2.out' });
+        }
+        if (catRobot) {
+            gsap.to(catRobot.scale, { x: 0, y: 0, z: 0, duration: 0.8, ease: 'power2.in' });
+            gsap.to(catRobot.position, { x: -1.5, y: 1.0, z: -8, duration: 0.8, ease: 'power2.in' });
         }
 
         // Transition Camera to focus on Features Section
@@ -1679,6 +1975,10 @@ function setActivePhase(phaseNum) {
             gsap.to(miniRobot.scale, { x: 0, y: 0, z: 0, duration: 0.8, ease: 'power2.in' });
             gsap.to(miniRobot.position, { x: 0, y: 1.0, z: -8, duration: 0.8, ease: 'power2.in' });
         }
+        if (catRobot) {
+            gsap.to(catRobot.scale, { x: 0, y: 0, z: 0, duration: 0.8, ease: 'power2.in' });
+            gsap.to(catRobot.position, { x: -1.5, y: 1.0, z: -8, duration: 0.8, ease: 'power2.in' });
+        }
 
         // If the somersault intro hasn't completed and is not currently playing, start it!
         if (!isIntroComplete && !isIntroPlaying) {
@@ -1699,8 +1999,8 @@ function setActivePhase(phaseNum) {
         }
 
     } else if (phaseNum === 3) {
-        // Phase 3: Fade out 3D canvas and fade in hologram head background
-        if (canvasContainer) canvasContainer.classList.remove('active');
+        // Phase 3: Keep 3D canvas active and fade in hologram head background behind it
+        if (canvasContainer) canvasContainer.classList.add('active');
         if (bgHologram) bgHologram.classList.add('active');
 
         controls.enabled = false;
@@ -1710,12 +2010,18 @@ function setActivePhase(phaseNum) {
             miniRobot.scale.set(0, 0, 0);
         }
 
+        // Transition Yellow Cat Bot into Phase 3 layout
+        if (catRobot) {
+            gsap.to(catRobot.scale, { x: 1.7, y: 1.7, z: 1.7, duration: 1.2, ease: 'power2.out' });
+            gsap.to(catRobot.position, { x: -1.5, y: 0.3, z: 0, duration: 1.2, ease: 'power2.out' });
+        }
+
         // Smoothly retreat main orange robot back into deep background fog (return to dock)
         gsap.to(robotGroup.position, { x: 0, y: 0, z: -15, duration: 1.5, ease: 'power2.inOut' });
         
-        // Sweep/pan camera to frame Contact Form on RHS/center
-        gsap.to(camera.position, { x: 1.5, y: 2.0, z: 5.0, duration: 1.5, ease: 'power2.inOut', onUpdate: () => controls.update() });
-        gsap.to(controls.target, { x: -1.5, y: 1.0, z: 0, duration: 1.5, ease: 'power2.inOut', onUpdate: () => controls.update() });
+        // Sweep/pan camera to frame Contact Form on RHS/center (Heroic perspective, framed lower to prevent header navigation clipping)
+        gsap.to(camera.position, { x: -2.7, y: 0.8, z: 3.1, duration: 1.5, ease: 'power2.inOut', onUpdate: () => controls.update() });
+        gsap.to(controls.target, { x: -1.5, y: 0.75, z: 0, duration: 1.5, ease: 'power2.inOut', onUpdate: () => controls.update() });
 
         // Hide specifications UI overlays
         gsap.to('#specs-card', { x: '120%', opacity: 0, duration: 0.8, ease: 'power3.inOut' });
