@@ -1,0 +1,23 @@
+{
+  "name": "corptic-robotics-3d",
+  "version": "1.0.0",
+  "description": "Futuristic 3D robotics landing page with Three.js and GSAP",
+  "main": "app.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "threejs",
+    "gsap",
+    "3d",
+    "robotics",
+    "cyberpunk"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^4.4.9"
+  }
+}
